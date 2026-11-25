@@ -1,0 +1,33 @@
+.club-cursor {
+  position: fixed;
+  z-index: 10;
+  inset: 0 auto auto 0;
+  display: block;
+  width: 24px;
+  height: 24px;
+  visibility: hidden;
+  pointer-events: none;
+  /* Invert the rendered pixels so individual letters affect the cursor too. */
+  color: #fff;
+  mix-blend-mode: difference;
+}
+
+.club-cursor-shape {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: currentColor;
+  transform: rotate(var(--cursor-angle, 0rad))
+    scale(var(--cursor-stretch, 1), var(--cursor-squeeze, 1))
+    rotate(calc(0rad - var(--cursor-angle, 0rad)));
+}
+
+@media (any-hover: hover) and (any-pointer: fine) and (prefers-reduced-motion: no-preference) and (forced-colors: none) {
+  html[data-club-cursor], html[data-club-cursor] * {
+    cursor: none !important;
+  }
+
+  html[data-club-cursor] .club-cursor {
+    visibility: visible;
+  }
+}

@@ -1,0 +1,1 @@
+{"name":"literature-club-template","private":true,"scripts":{"dev":"next dev","build":"next build","start":"bun server.js"},"dependencies":{"next":"^16","react":"^19","react-dom":"^19","tailwindcss":"^4","@tailwindcss/postcss":"^4"}}

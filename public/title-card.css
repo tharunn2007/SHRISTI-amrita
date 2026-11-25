@@ -1,0 +1,45 @@
+.title-card {
+  --intro-duration: 2s;
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-content: center;
+  padding: 1rem;
+  background: #000;
+  color: #fff;
+  font: clamp(2rem, 8vw, 4rem)/1 Bigger, Impact, sans-serif;
+  text-align: center;
+  text-transform: uppercase;
+  animation: reveal-home var(--intro-duration) ease-in-out both;
+}
+
+.title-card-content {
+  display: grid;
+  justify-items: center;
+  gap: 1rem;
+  animation: fade-title var(--intro-duration) ease-in-out both;
+}
+
+.title-card .title-card-logo {
+  width: min(42vmin, 10rem);
+  height: auto;
+}
+
+@keyframes fade-title {
+  0%, 35% { opacity: 1; }
+  55%, 100% { opacity: 0; }
+}
+
+@keyframes reveal-home {
+  0%, 60% { opacity: 1; }
+  100% { opacity: 0; visibility: hidden; }
+}
+
+main:focus-within .title-card {
+  visibility: hidden !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .title-card { display: none; }
+}
