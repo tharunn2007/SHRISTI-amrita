@@ -56,7 +56,7 @@ export default function Header() {
   }
 
   return <header className="club-header" data-menu-open={open} onKeyDown={handleKey}>
-    <a className="brand" href="#top" inert={open} aria-label={club.name + ' home'}><span className="brand-logo" aria-hidden="true" /></a>
+    <a className="brand" href="#top" inert={open} aria-label={club.name + ' home'}><img src="/srishti-header.svg" width="56" height="56" alt="" /></a>
     <div className="menu-shell" role={open ? 'dialog' : undefined} aria-modal={open || undefined} aria-label={open ? 'Site menu' : undefined}>
       <button ref={trigger} className="menu-trigger" onClick={() => setOpen(value => !value)}
         aria-haspopup="dialog" aria-controls="site-menu" aria-expanded={open} aria-label={open ? 'Close menu' : 'Open menu'}>

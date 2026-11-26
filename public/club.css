@@ -14,10 +14,10 @@
   font-display: swap;
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: #160000; }
+body { margin: 0; background: #fff; }
 main {
-  --paper: #fff2ed;
-  --ink: #160000;
+  --paper: #000;
+  --ink: #fff;
   --gutter: clamp(1rem, 3vw, 3.5rem);
   color: var(--ink);
   background: var(--paper);
@@ -26,7 +26,7 @@ main {
 a { color: inherit; text-decoration: none; }
 a:hover { text-decoration: underline; }
 :focus-visible { outline: 2px dashed currentColor; outline-offset: 3px; }
-.skip { position: absolute; z-index: 4; top: -10rem; background: white; }
+.skip { position: absolute; z-index: 4; top: -10rem; background: var(--paper); }
 .skip:focus { top: 1rem; left: 1rem; }
 header {
   height: 7rem;
@@ -36,7 +36,8 @@ header {
   padding: 0 var(--gutter);
   border-bottom: 1px solid;
 }
-.brand { display: grid; place-items: center; height: 100%; padding-block: .35rem; }
+.brand { display: grid; place-items: center; width: clamp(44px, 5vw, 56px); aspect-ratio: 1; }
+.brand img { display: block; width: 100%; height: auto; }
 .brand-logo {
   height: 100%;
   aspect-ratio: 1;
@@ -147,6 +148,8 @@ footer { border-top: 1px solid; padding: 1.5rem var(--gutter); display: flex; ga
 }
 
 .club-header {
+  color: #160000;
+  background: #fff2ed;
   --drawer-width: 41.7vw;
   --drawer-ease: cubic-bezier(.16,1,.3,1);
   position: relative; z-index: 3; justify-content: center;

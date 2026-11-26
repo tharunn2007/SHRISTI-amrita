@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Glitch Logo Title Card</title>
+<style>
+  body { margin: 0; background: #000; color: #aaa; font-family: Arial, sans-serif; text-align: center; }
+  canvas { width: 100%; max-width: 960px; display: block; margin: 0 auto; background: #0f0f11; }
+  .bar { padding: 10px; }
+  button { padding: 6px 14px; margin: 4px; }
+  html.intro, .intro body { height: 100%; background: #0f0f11; }
+  .intro body { display: grid; place-items: center; }
+  .intro canvas { width: min(100%, 177.7778vh, 960px); }
+  .intro .bar { display: none; }
+</style>
+<script>
+  if (new URLSearchParams(location.search).has('intro')) {
+    document.documentElement.classList.add('intro');
+  }
+</script>
+</head>
+<body>
+
+<canvas id="c" width="960" height="540"></canvas>
+
+<div class="bar">
+  <button onclick="start()">Replay</button>
+  <label><input type="checkbox" id="loop" checked> Loop</label>
+  Logo: <input type="file" accept="image/*" onchange="loadLogo(this)">
+  <br>
+  Tagline: <input id="tag" value="GLITCH LOGO" oninput="tagline = this.value.toUpperCase()">
+</div>
+
+<script>
+// ---------- SETTINGS (change these to tweak the look) ----------
+var W = 960, H = 540;
+var FPS = 30;              // stepped, "choppy" frame rate for the glitch
+var DURATION = 5;          // total length in seconds
+var GLITCH_IN_END = 0.4;   // glitch IN runs 0 -> 0.4s
+var OUT_START = 4.0;       // glitch OUT runs 4.0 -> 4.5s, then black
+var OUT_END = 4.5;
+var TAG_START = 1.0;       // tagline letters appear between 1.0s and 1.8s
+var TAG_SPAN = 0.8;
+var BG = '#0f0f11';
+
+// ---------- SETUP ----------
+var canvas = document.getElementById('c');
+var ctx = canvas.getContext('2d');
+
+function makeCanvas() {
+  var c = document.createElement('canvas');
+  c.width = W;
+  c.height = H;
+  return c;
+}
+
+var scene = makeCanvas();  var sctx = scene.getContext('2d');   // clean logo + tagline
+var tintR = makeCanvas();  var rctx = tintR.getContext('2d');    // red copy
+var tintC = makeCanvas();  var cctx = tintC.getContext('2d');    // cyan copy
+var work  = makeCanvas();  var wctx = work.getContext('2d');     // RGB-split result
+
+var customLogo = null;
+var tagline = 'GLITCH LOGO';
+var startTime = 0;
+var rafId = 0;
+
+// Predictable random: same seed gives same number (so each frame is stable)
+function rand(seed) {
+  var x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+// ---------- 1. DRAW THE CLEAN SCENE (logo + tagline, no background) ----------
+function drawScene(ft) {
+  sctx.clearRect(0, 0, W, H);
+
+  // logo with soft glow
+  sctx.save();
+  sctx.shadowColor = 'rgba(255,255,255,0.7)';
+  sctx.shadowBlur = 25;
+  sctx.fillStyle = '#e8e8e8';
+
+  if (customLogo) {
+    var s = Math.min(260 / customLogo.height, 400 / customLogo.width);
+    var w = customLogo.width * s;
+    var h = customLogo.height * s;
+    sctx.drawImage(customLogo, (W - w) / 2, 220 - h / 2, w, h);
+  } else {
+    // default pixel "X" logo
+    var cell = 14, n = 11;
+    var x0 = (W - n * cell) / 2;
+    var y0 = 220 - (n * cell) / 2;
+    for (var r = 0; r < n; r++) {
+      for (var c = 0; c < n; c++) {
+        if (Math.abs(r - c) <= 1 || Math.abs(r + c - (n - 1)) <= 1) {
+          sctx.fillRect(x0 + c * cell, y0 + r * cell, cell, cell);
+        }
+      }
+    }
+  }
+  sctx.restore();
+
+  // tagline: letters pop in random order
+  sctx.fillStyle = '#d0d0d0';
+  sctx.font = '16px Arial';
+  sctx.textAlign = 'center';
+  var step = 22;
+  var total = tagline.length * step;
+  var tx = (W - total) / 2 + step / 2;
+  for (var i = 0; i < tagline.length; i++) {
+    var ch = tagline.charAt(i);
+    var appearAt = TAG_START + rand(i + 7) * TAG_SPAN;
+    if (ft >= appearAt && ch !== ' ') {
+      sctx.fillText(ch, tx + i * step, 350);
+    }
+  }
+}
+
+// ---------- 2. TINT A COPY OF THE SCENE (for RGB split) ----------
+function tint(tc, tctx, color) {
+  tctx.globalCompositeOperation = 'source-over';
+  tctx.clearRect(0, 0, W, H);
+  tctx.drawImage(scene, 0, 0);
+  tctx.globalCompositeOperation = 'source-in';
+  tctx.fillStyle = color;
+  tctx.fillRect(0, 0, W, H);
+  tctx.globalCompositeOperation = 'source-over';
+}
+
+// ---------- 3. RENDER ONE FRAME ----------
+// k = glitch strength: 0 = clean, 1 = maximum glitch
+function render(time) {
+  var ft = Math.floor(time * FPS) / FPS;   // snap to 30fps steps
+  var f = Math.floor(time * FPS);          // frame number = random seed
+
+  ctx.fillStyle = BG;
+  ctx.fillRect(0, 0, W, H);
+
+  if (ft >= OUT_END) { return; }           // after glitch out: clean black
+
+  // work out the glitch strength for this moment
+  var k = 0;
+  if (ft < GLITCH_IN_END) {
+    k = 1 - ft / GLITCH_IN_END;            // GLITCH IN: strong -> 0
+  } else if (ft >= OUT_START) {
+    k = (ft - OUT_START) / (OUT_END - OUT_START);  // GLITCH OUT: 0 -> strong
+  } else if (ft >= 2.4 && ft < 2.5) {
+    k = 0.6;                               // small glitch "hit" mid-hold
+  }
+
+  drawScene(ft);
+
+  if (k <= 0) {                            // hold: clean logo
+    ctx.drawImage(scene, 0, 0);
+    return;
+  }
+
+  // flicker: first frames dark, then random on/off frames
+  if (ft < GLITCH_IN_END && f < 2) { return; }
+  if (rand(f * 5.3) < k * 0.5) { return; }
+
+  // RGB split: red one way, cyan the other, white on top
+  var off = k * 14 * (rand(f * 1.7) * 2 - 1);
+  tint(tintR, rctx, '#ff2a2a');
+  tint(tintC, cctx, '#00e5ff');
+
+  wctx.clearRect(0, 0, W, H);
+  wctx.globalCompositeOperation = 'lighter';
+  wctx.drawImage(tintR, off, 0);
+  wctx.drawImage(tintC, -off, 0);
+  wctx.globalCompositeOperation = 'source-over';
+  wctx.globalAlpha = 0.9;
+  wctx.drawImage(scene, 0, 0);
+  wctx.globalAlpha = 1;
+
+  ctx.drawImage(work, 0, 0);
+
+  // horizontal slices shifted sideways
+  var slices = Math.ceil(k * 8);
+  for (var i = 0; i < slices; i++) {
+    var y  = 120 + rand(f * 10 + i) * 260;
+    var h  = 4 + rand(f * 20 + i) * 40;
+    var dx = (rand(f * 30 + i) - 0.5) * k * 200;
+    ctx.fillStyle = BG;
+    ctx.fillRect(0, y, W, h);
+    ctx.drawImage(work, 0, y, W, h, dx, y, W, h);
+  }
+
+  // random white / black blocks (pixel fragments)
+  var blocks = Math.ceil(k * 6);
+  for (var j = 0; j < blocks; j++) {
+    var bx = 300 + rand(f * 40 + j) * 360;
+    var by = 120 + rand(f * 50 + j) * 260;
+    var bw = 10 + rand(f * 60 + j) * 60;
+    var bh = 3 + rand(f * 70 + j) * 12;
+    if (rand(f * 80 + j) > 0.5) { ctx.fillStyle = '#ffffff'; }
+    else { ctx.fillStyle = BG; }
+    ctx.fillRect(bx, by, bw, bh);
+  }
+}
+
+// ---------- 4. ANIMATION LOOP ----------
+function loop(now) {
+  var t = (now - startTime) / 1000;
+  if (t >= OUT_END && document.documentElement.classList.contains('intro')) {
+    render(OUT_END);
+    parent.postMessage('srishti-intro-ended', location.origin);
+    return;
+  }
+  if (t > DURATION) {
+    if (document.getElementById('loop').checked) {
+      startTime = now;
+      t = 0;
+    } else {
+      render(DURATION);
+      return;                              // stop at the end
+    }
+  }
+  render(t);
+  rafId = requestAnimationFrame(loop);
+}
+
+function start() {
+  cancelAnimationFrame(rafId);
+  startTime = performance.now();
+  rafId = requestAnimationFrame(loop);
+}
+
+// ---------- 5. LOAD YOUR OWN LOGO ----------
+function loadLogo(input) {
+  if (!input.files || !input.files[0]) { return; }
+  var reader = new FileReader();
+  reader.onload = function (e) {
+    var img = new Image();
+    img.onload = function () {
+      customLogo = img;
+      start();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+if (document.documentElement.classList.contains('intro')) {
+  document.getElementById('loop').checked = false;
+  tagline = 'SRISHTI CLUB';
+  var logo = new Image();
+  logo.onload = function () {
+    customLogo = logo;
+    start();
+  };
+  logo.onerror = start;
+  logo.src = '/srishti-title.png';
+} else {
+  start();
+}
+</script>
+
+</body>
+</html>
